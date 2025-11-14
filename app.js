@@ -39,6 +39,8 @@ let comments = []; // { time, name, text, audioBlob }
 let room = null;
 let sendCursor = null;
 let onCursor = null;
+let sendAudioUrl = null;
+let onAudioUrl = null;
 let cursors = {}; // peerId => cursorElement
 
 // Initialize WaveSurfer (no regions needed)
@@ -144,12 +146,30 @@ function getRandomSillyName() {
     return sillyNames[Math.floor(Math.random() * sillyNames.length)];
 }
 
+// Load audio from URL
+function loadAudioUrl(url) {
+    console.log('Loading audio from URL:', url);
+    let loadUrl = url;
+    if (url.includes('youtube.com') || url.includes('youtu.be')) {
+        loadUrl = `/api/youtube?url=${encodeURIComponent(url)}`;
+    }
+    wavesurfer.load(loadUrl);
+}
+
+// Send audio URL to peers
+function sendAudioUrl(url) {
+    if (room) {
+        console.log('Sending audio URL:', url);
+        sendAudioUrl(url);
+    }
+}
+
 // Join Trystero room for cursors
 function joinSession(roomName) {
     console.log('Joining room:', roomName);
     room = joinRoom({ appId: 'comment-the-wave' }, roomName);
-    console.log('Room created:', room);
     [sendCursor, onCursor] = room.makeAction('cursor');
+    [sendAudioUrl, onAudioUrl] = room.makeAction('audioUrl');
     console.log('Actions created');
     document.getElementById('joinSession').textContent = 'Leave Session';
     updatePeopleCount(1); // Self
@@ -158,6 +178,12 @@ function joinSession(roomName) {
     onCursor((data, peerId) => {
         console.log('Received cursor from', peerId, data);
         updateCursor(peerId, data.x, data.y);
+    });
+
+    // Handle incoming audio URLs
+    onAudioUrl((url, peerId) => {
+        console.log('Received audio URL from', peerId, url);
+        loadAudioUrl(url);
     });
 
     // Handle peer join
@@ -312,6 +338,17 @@ document.getElementById('fileInput').addEventListener('change', (e) => {
     } else {
         console.log('File invalid or too large'); // Debug
         alert('File too large or invalid.');
+    }
+});
+
+// Load URL
+document.getElementById('loadUrl').addEventListener('click', () => {
+    const url = document.getElementById('audioUrl').value.trim();
+    if (url) {
+        loadAudioUrl(url);
+        if (room) {
+            sendAudioUrl(url);
+        }
     }
 });
 
