@@ -1,0 +1,53 @@
+<!-- index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comment the Wave</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="session-controls">
+        <button id="joinSession">Join Session</button>
+    </div>
+
+    <div class="app-container">
+        <h1>Comment the Wave</h1>
+        <div class="controls">
+            <label for="fileInput" class="custom-file-upload">
+                Choose Audio File
+
+            <input type="file" id="fileInput" accept="audio/*" />
+            </label>
+            <button id="playPause">Play</button>
+            <button id="exportComments">Export Comments</button>
+        </div>
+      <div id="waveform">
+          <div id="middleTime">00:00:000</div>
+          <div id="hover"></div>
+      </div>
+      <div id="commentsList"></div>
+
+      <!-- Modal for comments -->
+      <div id="commentModal" class="modal">
+          <div class="modal-content">
+              <h2>Add Comment</h2>
+              <textarea id="commentText" placeholder="Your comment"></textarea>
+              <button id="submitComment">ADD COMMENT</button>
+          </div>
+      </div>
+
+     </div>
+
+     <!-- Chat container -->
+     <div id="chatContainer">
+         <div id="chatMessages"></div>
+         <input type="text" id="chatInput" placeholder="Type a message..." />
+     </div>
+     <script type="module" src="app.js"></script>
+</body>
+</html>
