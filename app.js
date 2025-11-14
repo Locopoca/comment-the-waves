@@ -34,6 +34,7 @@ function createGradients() {
 let wavesurfer;
 let isWaveSurferReady = false; // Custom flag to replace unreliable isReady
 let comments = []; // { time, name, text, audioBlob }
+let myName = '';
 
 // Trystero state
 let room = null;
@@ -43,6 +44,8 @@ let sendAudioUrl = null;
 let onAudioUrl = null;
 let sendAudio = null;
 let onAudio = null;
+let sendComment = null;
+let onComment = null;
 let cursors = {}; // peerId => cursorElement
 
 // Initialize WaveSurfer (no regions needed)
@@ -141,6 +144,25 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
+// Tab for quick comment
+document.addEventListener('keydown', (e) => {
+    if (e.code === 'Tab' && isWaveSurferReady && document.getElementById('commentModal').style.display !== 'block') {
+        e.preventDefault();
+        const text = prompt('Quick comment:');
+        if (text && text.trim()) {
+            const time = wavesurfer.getCurrentTime();
+            const name = room ? myName : getRandomSillyName();
+            const comment = { time, name, text: text.trim(), audioBlob: null };
+            comments.push(comment);
+            updateCommentsList();
+            // Share comment
+            if (room) {
+                sendComment({ time, name, text: text.trim() });
+            }
+        }
+    }
+});
+
 // Silly names
 const sillyNames = ['Pixel Pirate', 'Byte Bunny', 'Glitch Goblin', 'Retro Robot', 'Wave Warrior', 'Sound Sprite', 'Echo Elf', 'Tune Troll', 'Beat Bandit', 'Melody Monster'];
 
@@ -179,7 +201,10 @@ function joinSession(roomName) {
     [sendCursor, onCursor] = room.makeAction('cursor');
     [sendAudioUrl, onAudioUrl] = room.makeAction('audioUrl');
     [sendAudio, onAudio] = room.makeAction('audio', { binary: true });
+    [sendComment, onComment] = room.makeAction('comment');
     console.log('Actions created');
+    myName = getRandomSillyName();
+    console.log('My name:', myName);
     document.getElementById('joinSession').textContent = 'Leave Session';
     updatePeopleCount(1); // Self
 
@@ -200,6 +225,14 @@ function joinSession(roomName) {
         console.log('Received audio blob from', peerId, buffer.byteLength, 'bytes');
         const blob = new Blob([buffer], { type: 'audio/mpeg' });
         wavesurfer.loadBlob(blob);
+    });
+
+    // Handle incoming comments
+    onComment((data, peerId) => {
+        console.log('Received comment from', peerId, data);
+        const comment = { time: data.time, name: data.name, text: data.text, audioBlob: null };
+        comments.push(comment);
+        updateCommentsList();
     });
 
     // Handle peer join
@@ -331,9 +364,9 @@ waveform.addEventListener('dblclick', (e) => {
     document.getElementById('commentText').value = '';
     document.getElementById('commentText').focus();
 
-    // Store the time and random name for later
+    // Store the time and name for later
     window.currentCommentTime = time;
-    window.currentCommentName = getRandomSillyName();
+    window.currentCommentName = room ? myName : getRandomSillyName();
     window.wasPlayingBeforeComment = wasPlaying;
 });
 
@@ -452,9 +485,14 @@ const submitComment = () => {
     const text = document.getElementById('commentText').value.trim();
     if (text) {
         console.log('Comment added:', text); // Debug
-        const comment = { time: window.currentCommentTime, name: window.currentCommentName, text, audioBlob: null };
+        const name = room ? myName : getRandomSillyName(); // Use myName if in session
+        const comment = { time: window.currentCommentTime, name, text, audioBlob: null };
         comments.push(comment);
         updateCommentsList();
+        // Share comment
+        if (room) {
+            sendComment({ time: window.currentCommentTime, name, text });
+        }
         document.getElementById('commentModal').style.display = 'none';
         if (window.wasPlayingBeforeComment) {
             wavesurfer.play();
