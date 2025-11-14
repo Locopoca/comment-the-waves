@@ -1,6 +1,6 @@
 // app.js
 import WaveSurfer from 'https://cdn.jsdelivr.net/npm/wavesurfer.js@7/dist/wavesurfer.esm.js';
-import {joinRoom} from 'https://esm.run/trystero'
+import {joinRoom} from 'https://esm.run/trystero/torrent';
 
 
 // Waveform gradients (SoundCloud-style)
@@ -37,9 +37,9 @@ let comments = []; // { time, name, text, audioBlob }
 
 // Trystero state
 let room = null;
-let myName = '';
-let sendMessage = null;
-let onMessage = null;
+let sendCursor = null;
+let onCursor = null;
+let cursors = {}; // peerId => cursorElement
 
 // Initialize WaveSurfer (no regions needed)
 const { gradient, progressGradient } = createGradients();
@@ -144,46 +144,124 @@ function getRandomSillyName() {
     return sillyNames[Math.floor(Math.random() * sillyNames.length)];
 }
 
-// Join Trystero room
+// Join Trystero room for cursors
 function joinSession(roomName) {
     console.log('Joining room:', roomName);
     room = joinRoom({ appId: 'comment-the-wave' }, roomName);
-    [sendMessage, onMessage] = room.makeAction('chat');
-    myName = getRandomSillyName();
-    console.log('My name:', myName);
-    document.getElementById('chatContainer').style.display = 'flex';
+    console.log('Room created:', room);
+    [sendCursor, onCursor] = room.makeAction('cursor');
+    console.log('Actions created');
     document.getElementById('joinSession').textContent = 'Leave Session';
-    document.getElementById('chatMessages').innerHTML = '';
+    updatePeopleCount(1); // Self
 
-    // Send join message
-    sendMessage({ type: 'join', name: myName });
+    // Handle incoming cursor positions
+    onCursor((data, peerId) => {
+        console.log('Received cursor from', peerId, data);
+        updateCursor(peerId, data.x, data.y);
+    });
 
-    // Handle incoming messages
-    onMessage((data, peerId) => {
-        console.log('Received message:', data, 'from', peerId);
-        if (data.type === 'chat') {
-            addChatMessage(data.name, data.message);
-        } else if (data.type === 'join') {
-            addChatMessage('', `${data.name} joined the session.`);
-        } else if (data.type === 'leave') {
-            addChatMessage('', `${data.name} left the session.`);
-        }
+    // Handle peer join
+    room.onPeerJoin(peerId => {
+        console.log('Peer joined:', peerId);
+        updatePeopleCount(room.getPeers().length + 1);
     });
 
     // Handle peer leave
     room.onPeerLeave(peerId => {
-        // Note: Trystero doesn't provide name on leave, so generic message
-        addChatMessage('', 'Someone left the session.');
+        console.log('Peer left:', peerId);
+        if (cursors[peerId]) {
+            cursors[peerId].remove();
+            delete cursors[peerId];
+        }
+        updatePeopleCount(room.getPeers().length + 1);
     });
 
-    // Check max peers (approximate)
+    // Send cursor on move
+    document.addEventListener('mousemove', (e) => {
+        if (room) {
+            const data = { x: e.clientX, y: e.clientY };
+            console.log('Sending cursor:', data);
+            sendCursor(data);
+        }
+    });
+
+    // Check max capacity (8 total)
     setTimeout(() => {
         const peers = room.getPeers();
-        if (peers.length >= 3) { // 3 others, total 4
-            addChatMessage('', 'Session is full (max 4 people).');
+        console.log('Peers after join:', peers);
+        if (peers.length >= 7) { // 7 others, total 8
+            alert('Room is full (max 8 people).');
+            // Leave
+            room.leave();
+            room = null;
+            document.getElementById('joinSession').textContent = 'Leave Session';
+            Object.values(cursors).forEach(el => el.remove());
+            cursors = {};
+            updatePeopleCount(0);
+        } else {
+            updatePeopleCount(peers.length + 1);
         }
     }, 1000);
 }
+
+// Update cursor position
+function updateCursor(peerId, x, y) {
+    console.log('Updating cursor for', peerId, 'at', x, y);
+    if (!cursors[peerId]) {
+        console.log('Creating cursor for', peerId);
+        cursors[peerId] = document.createElement('div');
+        cursors[peerId].style.position = 'fixed';
+        cursors[peerId].style.width = '30px';
+        cursors[peerId].style.height = '30px';
+        cursors[peerId].style.background = getColorForPeer(peerId);
+        cursors[peerId].style.borderRadius = '50%';
+        cursors[peerId].style.pointerEvents = 'none';
+        cursors[peerId].style.zIndex = '1000';
+        cursors[peerId].style.border = '3px solid white';
+        cursors[peerId].style.boxShadow = '0 0 10px rgba(255,255,255,0.5)';
+        cursors[peerId].style.display = 'flex';
+        cursors[peerId].style.alignItems = 'center';
+        cursors[peerId].style.justifyContent = 'center';
+        cursors[peerId].style.fontSize = '12px';
+        cursors[peerId].style.fontFamily = '"Press Start 2P", monospace';
+        cursors[peerId].style.color = 'white';
+        cursors[peerId].style.fontWeight = 'bold';
+        cursors[peerId].textContent = getInitialForPeer(peerId);
+        document.body.appendChild(cursors[peerId]);
+    }
+    console.log('Setting cursor position to', x, y);
+    cursors[peerId].style.left = `${x - 15}px`;
+    cursors[peerId].style.top = `${y - 15}px`;
+}
+
+// Get color for peer
+function getColorForPeer(peerId) {
+    const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9'];
+    let hash = 0;
+    for (let i = 0; i < peerId.length; i++) {
+        hash = peerId.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return colors[Math.abs(hash) % colors.length];
+}
+
+// Get initial for peer
+function getInitialForPeer(peerId) {
+    const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    let hash = 0;
+    for (let i = 0; i < peerId.length; i++) {
+        hash = peerId.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return letters[Math.abs(hash) % letters.length];
+}
+
+// Update people count
+function updatePeopleCount(count) {
+    document.getElementById('peopleCount').textContent = `People: ${count}`;
+}
+
+
+
+
 
 // Double click for comments
 waveform.addEventListener('dblclick', (e) => {
@@ -246,17 +324,19 @@ document.getElementById('playPause').addEventListener('click', () => {
 document.getElementById('joinSession').addEventListener('click', () => {
     if (room) {
         // Leave session
-        sendMessage({ type: 'leave', name: myName });
         room.leave();
         room = null;
-        document.getElementById('chatContainer').style.display = 'none';
         document.getElementById('joinSession').textContent = 'Join Session';
-        document.getElementById('chatMessages').innerHTML = '';
+        // Remove all cursors
+        Object.values(cursors).forEach(el => el.remove());
+        cursors = {};
+        updatePeopleCount(0);
     } else {
-        const roomName = Math.random().toString(36).substring(2, 15);
-        joinSession(roomName);
+        joinSession('wave-session');
     }
 });
+
+
 
 function getDistance(touch1, touch2) {
     const dx = touch1.clientX - touch2.clientX;
@@ -359,43 +439,7 @@ document.getElementById('exportComments').addEventListener('click', () => {
     console.log('Export complete'); // Debug
 });
 
-// Chat input
-document.getElementById('chatInput').addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && room) {
-        const message = e.target.value.trim();
-        if (message) {
-            console.log('Sending message:', { type: 'chat', name: myName, message });
-            sendMessage({ type: 'chat', name: myName, message });
-            addChatMessage(myName, message);
-            e.target.value = '';
-        }
-    }
-});
 
-// Make chat container draggable
-let isDragging = false;
-let dragOffsetX = 0;
-let dragOffsetY = 0;
-const chatContainer = document.getElementById('chatContainer');
-
-chatContainer.addEventListener('mousedown', (e) => {
-    isDragging = true;
-    dragOffsetX = e.clientX - chatContainer.offsetLeft;
-    dragOffsetY = e.clientY - chatContainer.offsetTop;
-    chatContainer.style.cursor = 'grabbing';
-});
-
-document.addEventListener('mousemove', (e) => {
-    if (isDragging) {
-        chatContainer.style.left = `${e.clientX - dragOffsetX}px`;
-        chatContainer.style.top = `${e.clientY - dragOffsetY}px`;
-    }
-});
-
-document.addEventListener('mouseup', () => {
-    isDragging = false;
-    chatContainer.style.cursor = 'grab';
-});
 
 // Update comments list
 function updateCommentsList() {
@@ -420,19 +464,7 @@ function updateCommentsList() {
     });
 }
 
-// Add chat message
-function addChatMessage(name, message) {
-    const container = document.getElementById('chatMessages');
-    const item = document.createElement('div');
-    item.className = 'chat-item';
-    if (name) {
-        item.innerHTML = `<strong>${name}:</strong> ${message}`;
-    } else {
-        item.innerHTML = message;
-    }
-    container.appendChild(item);
-    container.scrollTop = container.scrollHeight;
-}
+
 
 
 
