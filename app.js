@@ -94,6 +94,12 @@ wavesurfer.on('loading', (percent) => {
     document.getElementById('loadingOverlay').textContent = `Loading audio... ${percent}%`;
 });
 
+wavesurfer.on('error', (err) => {
+    console.error('WaveSurfer error:', err);
+    document.getElementById('loadingOverlay').style.display = 'none';
+    alert('Failed to load audio.');
+});
+
 wavesurfer.on('timeupdate', (currentTime) => {
     document.getElementById('middleTime').textContent = formatTime(currentTime);
 });
