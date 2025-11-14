@@ -454,11 +454,6 @@ document.getElementById('loadUrl').addEventListener('click', () => {
     }
 });
 
-// Load audio button
-document.getElementById('loadAudioBtn').addEventListener('click', () => {
-    document.getElementById('fileInput').click();
-});
-
 // Play/pause button
 document.getElementById('playPause').addEventListener('click', () => {
     wavesurfer.playPause();
