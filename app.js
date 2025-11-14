@@ -37,10 +37,12 @@ let comments = []; // { time, name, text, audioBlob }
 
 // Trystero state
 let room = null;
-let sendCursor;
-let onCursor;
-let sendAudioUrl;
-let onAudioUrl;
+let sendCursor = null;
+let onCursor = null;
+let sendAudioUrl = null;
+let onAudioUrl = null;
+let sendAudio = null;
+let onAudio = null;
 let cursors = {}; // peerId => cursorElement
 
 // Initialize WaveSurfer (no regions needed)
@@ -147,25 +149,9 @@ function getRandomSillyName() {
 }
 
 // Load audio from URL
-async function loadAudioUrl(url) {
+function loadAudioUrl(url) {
     console.log('Loading audio from URL:', url);
-    let loadUrl = url;
-    if (url.includes('youtube.com') || url.includes('youtu.be')) {
-        const apiUrl = `/api/youtube?url=${encodeURIComponent(url)}`;
-        try {
-            const response = await fetch(apiUrl);
-            if (!response.ok) {
-                const error = await response.json();
-                alert('Failed to load YouTube audio: ' + error.error);
-                return;
-            }
-            loadUrl = apiUrl;
-        } catch (e) {
-            alert('Failed to load YouTube audio: ' + e.message);
-            return;
-        }
-    }
-    wavesurfer.load(loadUrl);
+    wavesurfer.load(url);
 }
 
 // Send audio URL to peers
@@ -176,12 +162,23 @@ function sendAudioUrlToPeers(url) {
     }
 }
 
+// Send audio blob to peers
+function sendAudioBlob(blob) {
+    if (room && blob.size > 0) {
+        console.log('Sending audio blob:', blob.size, 'bytes');
+        blob.arrayBuffer().then(buffer => {
+            sendAudio(buffer);
+        });
+    }
+}
+
 // Join Trystero room for cursors
 function joinSession(roomName) {
     console.log('Joining room:', roomName);
     room = joinRoom({ appId: 'comment-the-wave' }, roomName);
     [sendCursor, onCursor] = room.makeAction('cursor');
     [sendAudioUrl, onAudioUrl] = room.makeAction('audioUrl');
+    [sendAudio, onAudio] = room.makeAction('audio', { binary: true });
     console.log('Actions created');
     document.getElementById('joinSession').textContent = 'Leave Session';
     updatePeopleCount(1); // Self
@@ -196,6 +193,13 @@ function joinSession(roomName) {
     onAudioUrl((url, peerId) => {
         console.log('Received audio URL from', peerId, url);
         loadAudioUrl(url);
+    });
+
+    // Handle incoming audio blobs
+    onAudio((buffer, peerId) => {
+        console.log('Received audio blob from', peerId, buffer.byteLength, 'bytes');
+        const blob = new Blob([buffer], { type: 'audio/mpeg' });
+        wavesurfer.loadBlob(blob);
     });
 
     // Handle peer join
@@ -345,6 +349,8 @@ document.getElementById('fileInput').addEventListener('change', (e) => {
             const arrayBuffer = evt.target.result;
             const blob = new Blob([arrayBuffer], { type: 'audio/mpeg' });
             wavesurfer.loadBlob(blob);
+            // Share the audio with peers
+            sendAudioBlob(blob);
         };
         reader.readAsArrayBuffer(file);
     } else {
