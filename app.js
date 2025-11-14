@@ -86,6 +86,7 @@ wavesurfer.on('ready', () => {
     isWaveSurferReady = true;
     updateCommentsList(); // In case comments added before ready
     document.getElementById('loadingOverlay').style.display = 'none';
+    document.getElementById('noAudioOverlay').style.display = 'none';
 });
 
 wavesurfer.on('loading', (percent) => {
@@ -445,6 +446,11 @@ document.getElementById('loadUrl').addEventListener('click', () => {
             sendAudioUrlToPeers(url);
         }
     }
+});
+
+// Load audio button
+document.getElementById('loadAudioBtn').addEventListener('click', () => {
+    document.getElementById('fileInput').click();
 });
 
 // Play/pause button
