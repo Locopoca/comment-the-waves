@@ -49,6 +49,7 @@ let onComment = null;
 let sendComments = null;
 let onComments = null;
 let cursors = {}; // peerId => cursorElement
+let activePeers = new Set();
 
 // Initialize WaveSurfer (no regions needed)
 const { gradient, progressGradient } = createGradients();
@@ -229,8 +230,37 @@ function joinSession(roomName) {
 
     // Handle incoming cursor positions
     onCursor((data, peerId) => {
-        console.log('Received cursor from', peerId, data);
-        updateCursor(peerId, data.x, data.y);
+        if (activePeers.has(peerId)) {
+            updateCursor(peerId, data.x, data.y);
+        }
+    });
+
+    // Handle peer join
+    room.onPeerJoin(peerId => {
+        console.log('Peer joined:', peerId);
+        activePeers.add(peerId);
+        updatePeopleCount(room.getPeers().length + 1);
+        playNotificationSound();
+        // Send current comments to new peer
+        sendComments(comments);
+    });
+
+    // Handle peer leave
+    room.onPeerLeave(peerId => {
+        console.log('Peer left:', peerId);
+        activePeers.delete(peerId);
+        if (cursors[peerId]) {
+            cursors[peerId].remove();
+            delete cursors[peerId];
+        }
+        updatePeopleCount(room.getPeers().length + 1);
+    });
+
+    // Send cursor on move
+    document.addEventListener('mousemove', (e) => {
+        if (room) {
+            sendCursor({ x: e.clientX, y: e.clientY });
+        }
     });
 
     // Handle incoming audio URLs
@@ -313,6 +343,8 @@ function joinSession(roomName) {
         }
     }, 1000);
 }
+
+
 
 // Update cursor position
 function updateCursor(peerId, x, y) {
@@ -471,6 +503,7 @@ document.getElementById('joinSession').addEventListener('click', () => {
         // Remove all cursors
         Object.values(cursors).forEach(el => el.remove());
         cursors = {};
+        activePeers.clear();
         updatePeopleCount(0);
     } else {
         joinSession('wave-session');
