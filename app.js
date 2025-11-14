@@ -225,6 +225,7 @@ function joinSession(roomName) {
         console.log('Received audio blob from', peerId, buffer.byteLength, 'bytes');
         const blob = new Blob([buffer], { type: 'audio/mpeg' });
         wavesurfer.loadBlob(blob);
+        playNotificationSound();
     });
 
     // Handle incoming comments
@@ -233,12 +234,14 @@ function joinSession(roomName) {
         const comment = { time: data.time, name: data.name, text: data.text, audioBlob: null };
         comments.push(comment);
         updateCommentsList();
+        playNotificationSound();
     });
 
     // Handle peer join
     room.onPeerJoin(peerId => {
         console.log('Peer joined:', peerId);
         updatePeopleCount(room.getPeers().length + 1);
+        playNotificationSound();
     });
 
     // Handle peer leave
@@ -332,6 +335,25 @@ function getInitialForPeer(peerId) {
 // Update people count
 function updatePeopleCount(count) {
     document.getElementById('peopleCount').textContent = `People: ${count}`;
+}
+
+// Play notification sound
+function playNotificationSound() {
+    try {
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+        oscillator.type = 'sine';
+        gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.5);
+    } catch (e) {
+        console.log('Audio notification not supported');
+    }
 }
 
 
