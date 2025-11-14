@@ -7,16 +7,10 @@ export default async function handler(req, res) {
     return;
   }
   try {
-    const info = await ytdl.getInfo(url);
-    const format = ytdl.chooseFormat(info.formats, { quality: 'highestaudio' });
-    if (!format) {
-      res.status(500).json({ error: 'No audio format found' });
-      return;
-    }
     res.setHeader('Content-Type', 'audio/mpeg');
-    ytdl(url, { format }).pipe(res);
+    ytdl(url, { filter: 'audioonly' }).pipe(res);
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: 'Failed to load audio' });
+    res.status(500).json({ error: error.message });
   }
 }
