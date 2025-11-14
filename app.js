@@ -37,10 +37,10 @@ let comments = []; // { time, name, text, audioBlob }
 
 // Trystero state
 let room = null;
-let sendCursor = null;
-let onCursor = null;
-let sendAudioUrl = null;
-let onAudioUrl = null;
+let sendCursor;
+let onCursor;
+let sendAudioUrl;
+let onAudioUrl;
 let cursors = {}; // peerId => cursorElement
 
 // Initialize WaveSurfer (no regions needed)
@@ -157,7 +157,7 @@ function loadAudioUrl(url) {
 }
 
 // Send audio URL to peers
-function sendAudioUrl(url) {
+function sendAudioUrlToPeers(url) {
     if (room) {
         console.log('Sending audio URL:', url);
         sendAudioUrl(url);
@@ -347,7 +347,7 @@ document.getElementById('loadUrl').addEventListener('click', () => {
     if (url) {
         loadAudioUrl(url);
         if (room) {
-            sendAudioUrl(url);
+            sendAudioUrlToPeers(url);
         }
     }
 });
