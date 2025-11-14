@@ -146,18 +146,21 @@ function getRandomSillyName() {
 
 // Join Trystero room
 function joinSession(roomName) {
+    console.log('Joining room:', roomName);
     room = joinRoom({ appId: 'comment-the-wave' }, roomName);
     [sendMessage, onMessage] = room.makeAction('chat');
     myName = getRandomSillyName();
+    console.log('My name:', myName);
     document.getElementById('chatContainer').style.display = 'flex';
     document.getElementById('joinSession').textContent = 'Leave Session';
-    document.getElementById('roomInput').disabled = true;
+    document.getElementById('chatMessages').innerHTML = '';
 
     // Send join message
     sendMessage({ type: 'join', name: myName });
 
     // Handle incoming messages
     onMessage((data, peerId) => {
+        console.log('Received message:', data, 'from', peerId);
         if (data.type === 'chat') {
             addChatMessage(data.name, data.message);
         } else if (data.type === 'join') {
@@ -361,6 +364,7 @@ document.getElementById('chatInput').addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && room) {
         const message = e.target.value.trim();
         if (message) {
+            console.log('Sending message:', { type: 'chat', name: myName, message });
             sendMessage({ type: 'chat', name: myName, message });
             addChatMessage(myName, message);
             e.target.value = '';
