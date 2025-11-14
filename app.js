@@ -316,9 +316,7 @@ function joinSession(roomName) {
 
 // Update cursor position
 function updateCursor(peerId, x, y) {
-    console.log('Updating cursor for', peerId, 'at', x, y);
     if (!cursors[peerId]) {
-        console.log('Creating cursor for', peerId);
         cursors[peerId] = document.createElement('div');
         cursors[peerId].style.position = 'fixed';
         cursors[peerId].style.width = '30px';
@@ -339,9 +337,10 @@ function updateCursor(peerId, x, y) {
         cursors[peerId].textContent = getInitialForPeer(peerId);
         document.body.appendChild(cursors[peerId]);
     }
-    console.log('Setting cursor position to', x, y);
-    cursors[peerId].style.left = `${x - 15}px`;
-    cursors[peerId].style.top = `${y - 15}px`;
+    if (cursors[peerId]) {
+        cursors[peerId].style.left = `${x - 15}px`;
+        cursors[peerId].style.top = `${y - 15}px`;
+    }
 }
 
 // Get color for peer
