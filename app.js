@@ -147,11 +147,23 @@ function getRandomSillyName() {
 }
 
 // Load audio from URL
-function loadAudioUrl(url) {
+async function loadAudioUrl(url) {
     console.log('Loading audio from URL:', url);
     let loadUrl = url;
     if (url.includes('youtube.com') || url.includes('youtu.be')) {
-        loadUrl = `/api/youtube?url=${encodeURIComponent(url)}`;
+        const apiUrl = `/api/youtube?url=${encodeURIComponent(url)}`;
+        try {
+            const response = await fetch(apiUrl);
+            if (!response.ok) {
+                const error = await response.json();
+                alert('Failed to load YouTube audio: ' + error.error);
+                return;
+            }
+            loadUrl = apiUrl;
+        } catch (e) {
+            alert('Failed to load YouTube audio: ' + e.message);
+            return;
+        }
     }
     wavesurfer.load(loadUrl);
 }

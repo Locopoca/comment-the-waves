@@ -7,8 +7,10 @@ export default async function handler(req, res) {
     return;
   }
   try {
+    // Clean the URL to remove query params
+    const cleanUrl = url.split('?')[0];
     res.setHeader('Content-Type', 'audio/mpeg');
-    ytdl(url, { filter: 'audioonly' }).pipe(res);
+    ytdl(cleanUrl, { filter: 'audioonly' }).pipe(res);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: error.message });
