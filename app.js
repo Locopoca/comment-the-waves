@@ -46,6 +46,8 @@ let sendAudio = null;
 let onAudio = null;
 let sendComment = null;
 let onComment = null;
+let sendComments = null;
+let onComments = null;
 let cursors = {}; // peerId => cursorElement
 
 // Initialize WaveSurfer (no regions needed)
@@ -83,6 +85,12 @@ wavesurfer.on('ready', () => {
     console.log('WaveSurfer ready'); // Debug
     isWaveSurferReady = true;
     updateCommentsList(); // In case comments added before ready
+    document.getElementById('loadingOverlay').style.display = 'none';
+});
+
+wavesurfer.on('loading', (percent) => {
+    document.getElementById('loadingOverlay').style.display = 'flex';
+    document.getElementById('loadingOverlay').textContent = `Loading audio... ${percent}%`;
 });
 
 wavesurfer.on('timeupdate', (currentTime) => {
@@ -202,6 +210,7 @@ function joinSession(roomName) {
     [sendAudioUrl, onAudioUrl] = room.makeAction('audioUrl');
     [sendAudio, onAudio] = room.makeAction('audio', { binary: true });
     [sendComment, onComment] = room.makeAction('comment');
+    [sendComments, onComments] = room.makeAction('comments');
     console.log('Actions created');
     myName = getRandomSillyName();
     console.log('My name:', myName);
@@ -237,11 +246,24 @@ function joinSession(roomName) {
         playNotificationSound();
     });
 
+    // Handle incoming comments sync
+    onComments((data, peerId) => {
+        console.log('Received comments sync from', peerId, data);
+        data.forEach(c => {
+            if (!comments.some(existing => existing.time === c.time && existing.text === c.text)) {
+                comments.push(c);
+            }
+        });
+        updateCommentsList();
+    });
+
     // Handle peer join
     room.onPeerJoin(peerId => {
         console.log('Peer joined:', peerId);
         updatePeopleCount(room.getPeers().length + 1);
         playNotificationSound();
+        // Send current comments to new peer
+        sendComments(comments);
     });
 
     // Handle peer leave
