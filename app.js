@@ -63,6 +63,9 @@ wavesurfer = WaveSurfer.create({
 
 console.log('WaveSurfer created'); // Debug: Confirm creation
 
+// Load placeholder audio
+wavesurfer.load('https://www.learningcontainer.com/wp-content/uploads/2020/02/Kalimba.mp3');
+
 // Hover effect
 const waveform = document.querySelector('#waveform');
 const hover = document.querySelector('#hover');
