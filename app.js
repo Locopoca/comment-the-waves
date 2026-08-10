@@ -1,6 +1,5 @@
 // app.js
 import WaveSurfer from 'https://cdn.jsdelivr.net/npm/wavesurfer.js@7/dist/wavesurfer.esm.js';
-import {joinRoom} from 'https://esm.run/trystero/torrent';
 
 
 // Waveform gradients (SoundCloud-style)
